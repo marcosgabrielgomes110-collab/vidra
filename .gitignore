@@ -216,3 +216,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project specific
+data/
+imbox/
+None
+tree
+*.webm
+*.mp3
+*.mp4
+*.srt
+*.vtt
