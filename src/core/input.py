@@ -10,7 +10,9 @@ def download_mp4(url):
         'outtmpl': str(DATA / '%(title)s.%(ext)s'),
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
-        ydl.download([url])
+        info = ydl.extract_info(url, download=True)
+        filename = ydl.prepare_filename(info)
+        return filename.replace('.webp', '.mp4')
 
 def download_audio(url):
     opts = {
@@ -23,7 +25,9 @@ def download_audio(url):
         }],
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
-        ydl.download([url])
+        info = ydl.extract_info(url, download=True)
+        filename = ydl.prepare_filename(info)
+        return filename.replace('.webp', '.mp3')
 
 def get_input(url):
     movie = download_mp4(url)
