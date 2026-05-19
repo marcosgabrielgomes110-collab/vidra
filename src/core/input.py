@@ -5,7 +5,9 @@ from src.configs import DATA
 
 def download_mp4(url):
     opts = {
-        'outtmpl': str(DATA / '%(title)s.%(ext)s')
+        'format': 'bestvideo[ext=mp4]',
+        'merge_output_format': 'mp4',
+        'outtmpl': str(DATA / '%(title)s.%(ext)s'),
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download([url])
