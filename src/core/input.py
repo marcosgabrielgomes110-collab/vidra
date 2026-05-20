@@ -1,39 +1,45 @@
-import os
+import re
 import yt_dlp 
 
 from src.configs import DATA
 
+_SANITIZE = re.compile(r'[^\w\- ]+')
+
+def _title(url):
+    with yt_dlp.YoutubeDL({'quiet': True, 'no_warnings': True}) as ydl:
+        return ydl.extract_info(url, download=False)['title']
+
+def _safe_name(title):
+    return _SANITIZE.sub('', title).strip()
+
 def download_mp4(url):
-    opts = {
-        'format': 'bestvideo[ext=mp4]',
-        'merge_output_format': 'mp4',
-        'outtmpl': str(DATA / '%(title)s.%(ext)s'),
-    }
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        filename = ydl.prepare_filename(info)
-        return filename.replace('.webp', '.mp4')
+    title = _safe_name(_title(url))
+    path = DATA / f'{title}.mp4'
+    if not path.exists():
+        yt_dlp.YoutubeDL({
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'outtmpl': str(path),
+            'merge_output_format': 'mp4',
+            'quiet': True, 'no_warnings': True,
+        }).download([url])
+    return str(path)
 
 def download_audio(url):
-    opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': str(DATA / '%(title)s.%(ext)s'),
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192'
-        }],
-    }
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        filename = ydl.prepare_filename(info)
-        return filename.replace('.webp', '.mp3')
+    title = _safe_name(_title(url))
+    path = DATA / f'{title}.mp3'
+    if not path.exists():
+        yt_dlp.YoutubeDL({
+            'format': 'bestaudio/best',
+            'outtmpl': str(DATA / f'{title}.%(ext)s'),
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'quiet': True, 'no_warnings': True,
+        }).download([url])
+    return str(path)
 
-def get_input(url):
-    movie = download_mp4(url)
-    aud = download_audio(url)
-    print(f"download sucessfull\nmovie -> {movie}\naudio -> {aud}")
-    
 #if __name__ == "__main__":
 #    print(DATA)
 #    url = "https://www.youtube.com/watch?v=gd7BXuUQ91w"

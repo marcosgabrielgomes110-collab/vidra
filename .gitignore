@@ -227,3 +227,4 @@ tree
 *.mp4
 *.srt
 *.vtt
+models/
