@@ -119,6 +119,25 @@ def transcribe(wav_file, with_timestamps=False):
     return segments
 
 
+# ── tradução ───────────────────────────────────────────
+
+def translate_segments(segments):
+    """Traduz o text de cada segmento via GoogleTranslator.
+
+    Retorna nova lista preservando start/end/words e
+    adicionando campo 'original' com o texto fonte.
+    """
+    from src.core.translate import translate
+
+    translated = []
+    for seg in segments:
+        new = dict(seg)
+        new['original'] = seg['text']
+        new['text'] = translate(seg['text'])
+        translated.append(new)
+    return translated
+
+
 # ── salvamento ─────────────────────────────────────────
 
 def clean_save(data, path=None):
