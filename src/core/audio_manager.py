@@ -1,55 +1,150 @@
+import json
 import os
 import subprocess
-import wave 
-import json 
+import wave
 
-from src.configs import DATA
-from src.configs import MODEL
+from src.configs import DATA, MODEL
+from vosk import KaldiRecognizer, Model
 
-from vosk import Model, KaldiRecognizer
+
+# ── conversão ──────────────────────────────────────────
 
 def get_mp3():
     return next(
-        (os.path.join(DATA, f) for f in os.listdir(DATA) if f.endswith(".mp3")),
-        None
+        (os.path.join(DATA, f) for f in os.listdir(DATA) if f.endswith('.mp3')),
+        None,
     )
 
 def mp3_to_wav(mp3_path=None):
     mp3_file = mp3_path or get_mp3()
     if not mp3_file:
-        print("nenhum mp3 encontrado")
+        print('nenhum mp3 encontrado')
         return None
 
-    wav_file = mp3_file.replace(".mp3", ".wav")
+    wav_file = mp3_file.replace('.mp3', '.wav')
 
     subprocess.run([
-        "ffmpeg",
-        "-i", mp3_file,
-        "-ar", "16000",
-        "-ac", "1",
-        "-f", "wav",
-        wav_file
-    ])
+        'ffmpeg', '-i', mp3_file,
+        '-ar', '16000', '-ac', '1', '-f', 'wav',
+        wav_file,
+    ], check=True, capture_output=True)
 
     return wav_file
 
-def transcribe(wav_file):
-    wf = wave.open(wav_file, "rb")
 
+# ── helpers de agrupamento ──────────────────────────────
+
+_PAUSE_THRESH = 0.3   # segundos de silêncio entre palavras
+_MAX_WORDS = 25       # palavras máximas por segmento
+_MIN_WORDS = 3        # funde com anterior se abaixo disso
+
+def _group_words(words):
+    """Agrupa palavras do Vosk em segmentos por pausa e tamanho."""
+    groups = []
+    cur = []
+
+    for w in words:
+        if not cur:
+            cur.append(w)
+        elif w['start'] - cur[-1]['end'] > _PAUSE_THRESH:
+            groups.append(cur)
+            cur = [w]
+        elif len(cur) >= _MAX_WORDS:
+            groups.append(cur)
+            cur = [w]
+        else:
+            cur.append(w)
+    if cur:
+        groups.append(cur)
+
+    # funde segmentos muito curtos no anterior
+    merged = []
+    for g in groups:
+        if merged and len(g) < _MIN_WORDS:
+            merged[-1].extend(g)
+        else:
+            merged.append(g)
+
+    return [{
+        'text': ' '.join(w['word'] for w in g),
+        'start': g[0]['start'],
+        'end': g[-1]['end'],
+        'words': g,
+    } for g in merged]
+
+
+_FMT_SRT_CACHE = {}
+
+def _fmt_srt(sec):
+    """Segundos → HH:MM:SS,mmm  (formato SRT)."""
+    h, r = divmod(int(sec), 3600)
+    m, s = divmod(r, 60)
+    ms = int((sec - int(sec)) * 1000)
+    return f'{h:02d}:{m:02d}:{s:02d},{ms:03d}'
+
+
+# ── transcrição ────────────────────────────────────────
+
+def transcribe(wav_file, with_timestamps=False):
+    wf = wave.open(wav_file, 'rb')
     model = Model(str(MODEL))
     rec = KaldiRecognizer(model, wf.getframerate())
+    rec.SetWords(True)
 
-    txt = []
+    raw_segments = []
 
     while True:
         data = wf.readframes(4000)
         if not data:
             break
-
         if rec.AcceptWaveform(data):
             res = json.loads(rec.Result())
-            txt.append(res.get("text", ""))
+            words = res.get('result', [])
+            if words:
+                raw_segments.extend(words)
 
     final = json.loads(rec.FinalResult())
-    txt.append(final.get("text", ""))
-    return " ".join(txt)
+    final_words = final.get('result', [])
+    if final_words:
+        raw_segments.extend(final_words)
+
+    if not raw_segments:
+        return [] if with_timestamps else ''
+
+    segments = _group_words(raw_segments)
+
+    if not with_timestamps:
+        return ' '.join(s['text'] for s in segments)
+
+    return segments
+
+
+# ── salvamento ─────────────────────────────────────────
+
+def clean_save(data, path=None):
+    """Salva transcrição detectando formato automaticamente.
+
+    data → str   ⇒  .txt (texto puro)
+    data → list  ⇒  .srt + .json (segmentos c/ tempo)
+    """
+    path = path or DATA / 'output'
+
+    if isinstance(data, list):
+        # SRT
+        srt_path = path.with_suffix('.srt') if path.suffix else DATA / f'{path.stem}.srt'
+        with open(srt_path, 'w', encoding='utf-8') as f:
+            for i, seg in enumerate(data, 1):
+                f.write(f'{i}\n{_fmt_srt(seg["start"])} --> {_fmt_srt(seg["end"])}\n{seg["text"]}\n\n')
+
+        # JSON word-level
+        json_path = path.with_suffix('.json') if path.suffix else DATA / f'{path.stem}.json'
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+
+        return str(srt_path)
+
+    # str → TXT
+    txt_path = path.with_suffix('.txt') if path.suffix else DATA / f'{path.stem}.txt'
+    with open(txt_path, 'w', encoding='utf-8') as f:
+        f.write(str(data))
+    return str(txt_path)
