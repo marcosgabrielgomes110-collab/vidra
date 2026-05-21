@@ -45,7 +45,7 @@ def main(url):
     dub(audio_file, translated, wav_dir, final_path)
     print(f'\n🎬 Áudio dublado salvo em: {final_path}')
 
-    output_dir = ROOT / 'output' / 'video final traduzido'
+    output_dir = ROOT / 'output'
     final_video = output_dir / f'{title}_final.mp4'
     merge_video_audio(movie, final_path, final_video)
     print(f'\n🎥 Vídeo final traduzido: {final_video}')
