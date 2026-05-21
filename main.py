@@ -1,8 +1,11 @@
+from pathlib import Path
+
 from src.configs import DATA, LANG_TRANSLATE
 from src.core.input import download_mp4, download_audio
 from src.core.audio_manager import (
     clean_save,
     mp3_to_wav,
+    speak,
     translate_segments,
     transcribe,
 )
@@ -26,6 +29,13 @@ def main(url):
     print(f'\n🌐 Traduzido para "{LANG_TRANSLATE}":')
     print(f'  SRT:  {t_archive}')
     print(f'  JSON: {t_archive.replace(".srt", ".json")}')
+
+    wav_dir = DATA / 'wav_output'
+    wav_dir.mkdir(parents=True, exist_ok=True)
+    for i, seg in enumerate(translated, 1):
+        wav_path = wav_dir / f'{i}.wav'
+        speak(seg['text'], wav_path)
+    print(f'\n🔊 {len(translated)} áudios gerados em: {wav_dir}/')
 
 if __name__ == '__main__':
     url = input("url --> ")

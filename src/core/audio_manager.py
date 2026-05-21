@@ -1,9 +1,13 @@
 import json
 import os
+import shutil
 import subprocess
 import wave
+from pathlib import Path
 
-from src.configs import DATA, MODEL
+from src.configs import DATA, MODEL, MODEL_TTS
+
+_ROOT = Path(__file__).resolve().parent.parent.parent  # raiz do projeto
 from vosk import KaldiRecognizer, Model
 
 
@@ -167,3 +171,38 @@ def clean_save(data, path=None):
     with open(txt_path, 'w', encoding='utf-8') as f:
         f.write(str(data))
     return str(txt_path)
+
+# ---------- tts --------------------- 
+def _find_piper():
+    """Localiza o binário piper no PATH ou na .venv do projeto."""
+    pip = shutil.which('piper')
+    if pip:
+        return pip
+    # fallback: .venv do projeto
+    local = _ROOT / '.venv' / 'bin' / 'piper'
+    if local.exists():
+        return str(local)
+    raise FileNotFoundError(
+        'piper não encontrado. Instale com: pip install piper-tts'
+    )
+
+def speak(text, name_part):
+    model_path = str(MODEL_TTS)
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(
+            f'Modelo TTS não encontrado: {model_path}\n'
+            f'Baixe de: https://huggingface.co/rhasspy/piper-voices/'
+        )
+
+    out_path = Path(name_part) if isinstance(name_part, str) else name_part
+    out_path = out_path.with_suffix('.wav') if out_path.suffix != '.wav' else out_path
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    piper = _find_piper()
+    subprocess.run(
+        [piper, '--model', model_path, '--output_file', str(out_path)],
+        input=text.encode(),
+        check=True,
+    )
+    return str(out_path)
+
