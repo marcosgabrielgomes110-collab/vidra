@@ -2,6 +2,11 @@ import shutil
 import sys
 from pathlib import Path
 
+# Redireciona __pycache__ para um diretório global (antes dos imports do projeto)
+_CACHE = Path(__file__).resolve().parent / '.pycache'
+_CACHE.mkdir(exist_ok=True)
+sys.pycache_prefix = str(_CACHE)
+
 from src.configs import DATA, LANG_TRANSLATE, ROOT
 from src.core.input import download_mp4, download_audio
 from src.core.audio_manager import (
