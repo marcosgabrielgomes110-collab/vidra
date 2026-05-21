@@ -4,6 +4,7 @@ from src.configs import DATA, LANG_TRANSLATE
 from src.core.input import download_mp4, download_audio
 from src.core.audio_manager import (
     clean_save,
+    dub,
     mp3_to_wav,
     speak,
     translate_segments,
@@ -36,6 +37,11 @@ def main(url):
         wav_path = wav_dir / f'{i}.wav'
         speak(seg['text'], wav_path)
     print(f'\n🔊 {len(translated)} áudios gerados em: {wav_dir}/')
+
+    title = Path(movie).stem
+    final_path = DATA / f'{title}_final.mp3'
+    dub(audio_file, translated, wav_dir, final_path)
+    print(f'\n🎬 Áudio dublado salvo em: {final_path}')
 
 if __name__ == '__main__':
     url = input("url --> ")

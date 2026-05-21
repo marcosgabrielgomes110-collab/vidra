@@ -172,6 +172,68 @@ def clean_save(data, path=None):
         f.write(str(data))
     return str(txt_path)
 
+# ---------- dub (substituição nos timestamps) ----------
+
+def dub(audio_path, segments, wav_dir, output_path):
+    """Substitui as falas no áudio original pelos WAVs TTS nos timestamps exatos.
+
+    Mantém a duração original — TTS mais curto vira silêncio no final,
+    TTS mais longo é truncado.
+    """
+    tmp_orig = Path('/tmp/_dub_orig.wav')
+    tmp_dub  = Path('/tmp/_dub_out.wav')
+
+    # 1. Converte original para WAV mono 22050 Hz (formato dos segmentos TTS)
+    subprocess.run([
+        'ffmpeg', '-y', '-i', audio_path,
+        '-ar', '22050', '-ac', '1',
+        str(tmp_orig),
+    ], check=True, capture_output=True)
+
+    # 2. Lê samples do original
+    with wave.open(str(tmp_orig)) as f:
+        sr, sw, nc = f.getframerate(), f.getsampwidth(), f.getnchannels()
+        frames = bytearray(f.readframes(f.getnframes()))
+        total_samples = f.getnframes()
+        bps = sw * nc  # bytes per sample (frame)
+
+    # 3. Substitui cada segmento no range correto
+    for i, seg in enumerate(segments, 1):
+        ss = int(seg['start'] * sr) * bps
+        se = int(seg['end']   * sr) * bps
+        wav_file = wav_dir / f'{i}.wav'
+        if not wav_file.exists():
+            continue
+
+        with wave.open(str(wav_file)) as seg_w:
+            seg_data = seg_w.readframes(seg_w.getnframes())
+
+        size = se - ss
+        if len(seg_data) < size:
+            seg_data += b'\x00' * (size - len(seg_data))
+        frames[ss:se] = seg_data[:size]
+
+    # 4. Salva WAV temporário
+    with wave.open(str(tmp_dub), 'wb') as f:
+        f.setnchannels(nc)
+        f.setsampwidth(sw)
+        f.setframerate(sr)
+        f.writeframes(bytes(frames))
+
+    # 5. Converte para MP3 final
+    subprocess.run([
+        'ffmpeg', '-y', '-i', str(tmp_dub),
+        '-codec:a', 'libmp3lame', '-qscale:a', '2',
+        str(output_path),
+    ], check=True, capture_output=True)
+
+    # Limpeza
+    tmp_orig.unlink(missing_ok=True)
+    tmp_dub.unlink(missing_ok=True)
+
+    return str(output_path)
+
+
 # ---------- tts --------------------- 
 def _find_piper():
     """Localiza o binário piper no PATH ou na .venv do projeto."""
