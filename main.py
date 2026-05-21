@@ -82,5 +82,9 @@ if __name__ == '__main__':
     if args.verbose:
         log = setup_logging(verbose=True)
 
-    url = args.url or input('URL do YouTube: ')
-    main(url)
+    try:
+        url = args.url or input('URL do YouTube: ')
+        main(url)
+    except KeyboardInterrupt:
+        log.warning(f'{red("[vidra]")} interrompido pelo usuario')
+        sys.exit(130)
