@@ -1,10 +1,12 @@
+import shutil
 from pathlib import Path
 
-from src.configs import DATA, LANG_TRANSLATE
+from src.configs import DATA, LANG_TRANSLATE, ROOT
 from src.core.input import download_mp4, download_audio
 from src.core.audio_manager import (
     clean_save,
     dub,
+    merge_video_audio,
     mp3_to_wav,
     speak,
     translate_segments,
@@ -42,6 +44,16 @@ def main(url):
     final_path = DATA / f'{title}_final.mp3'
     dub(audio_file, translated, wav_dir, final_path)
     print(f'\n🎬 Áudio dublado salvo em: {final_path}')
+
+    output_dir = ROOT / 'output' / 'video final traduzido'
+    final_video = output_dir / f'{title}_final.mp4'
+    merge_video_audio(movie, final_path, final_video)
+    print(f'\n🎥 Vídeo final traduzido: {final_video}')
+
+    print(f'\n🧹 Limpando {DATA}...')
+    shutil.rmtree(DATA)
+    DATA.mkdir(exist_ok=True)
+    print('   imbox/ limpo')
 
 if __name__ == '__main__':
     url = input("url --> ")

@@ -234,6 +234,26 @@ def dub(audio_path, segments, wav_dir, output_path):
     return str(output_path)
 
 
+# ---------- merge (áudio dublado + vídeo original) ----
+
+def merge_video_audio(video_path, audio_path, output_path):
+    """Substitui o áudio do MP4 pelo MP3 dublado sem re-encode do vídeo."""
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run([
+        'ffmpeg', '-y',
+        '-i', video_path,
+        '-i', audio_path,
+        '-c:v', 'copy',
+        '-c:a', 'aac',
+        '-map', '0:v:0',
+        '-map', '1:a:0',
+        '-shortest',
+        str(out),
+    ], check=True, capture_output=True)
+    return str(out)
+
+
 # ---------- tts --------------------- 
 def _find_piper():
     """Localiza o binário piper no PATH ou na .venv do projeto."""
