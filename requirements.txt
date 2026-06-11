@@ -2,3 +2,4 @@ yt-dlp>=2024.0
 vosk>=0.3
 deep-translator>=1.11
 piper-tts>=1.2
+questionary>=2.0

@@ -1,5 +1,9 @@
 import re
-import yt_dlp 
+import shutil
+import subprocess
+from pathlib import Path
+
+import yt_dlp
 
 from src.configs import DATA
 
@@ -40,9 +44,32 @@ def download_audio(url):
         }).download([url])
     return str(path)
 
-#if __name__ == "__main__":
-#    print(DATA)
-#    url = "https://www.youtube.com/watch?v=gd7BXuUQ91w"
-#    url = "https://www.youtube.com/shorts/v8QsUPOcrrU"
-#    download_mp4(url)
-#    download_audio(url)
+
+# ── importação de vídeo local ─────────────────────────────
+
+def import_local_video(video_path: str) -> tuple[str, str]:
+    """Copia um vídeo local para a área de trabalho e extrai o áudio MP3.
+
+    Returns:
+        (caminho_do_mp4, caminho_do_mp3)
+    """
+    src = Path(video_path)
+    if not src.exists():
+        raise FileNotFoundError(f'Arquivo não encontrado: {video_path}')
+
+    DATA.mkdir(parents=True, exist_ok=True)
+
+    # Copia o vídeo para .vidra/tmp/ com nome sanitizado
+    stem = _safe_name(src.stem) or 'video'
+    movie = DATA / f'{stem}.mp4'
+    shutil.copy2(str(src), str(movie))
+
+    # Extrai o áudio MP3
+    audio = DATA / f'{stem}.mp3'
+    subprocess.run([
+        'ffmpeg', '-y', '-i', str(movie),
+        '-vn', '-acodec', 'libmp3lame', '-ab', '192k',
+        str(audio),
+    ], check=True, capture_output=True)
+
+    return str(movie), str(audio)

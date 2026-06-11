@@ -221,6 +221,7 @@ __marimo__/
 # Project specific
 data/
 imbox/
+.vidra/
 None
 tree
 *.webm

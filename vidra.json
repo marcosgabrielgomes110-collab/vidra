@@ -1,0 +1,26 @@
+{
+  "language": {
+    "source": "en",
+    "target": "pt"
+  },
+  "models": {
+    "vosk": {
+      "en": "models/vosk-model-small-en-us-0.15",
+      "pt": "models/vosk-model-small-pt-0.3"
+    },
+    "tts": {
+      "pt": "models/tts/pt_BR-faber-medium.onnx",
+      "en": "models/tts/en_US-lessac-medium.onnx"
+    }
+  },
+  "translate": {
+    "preferred": "google"
+  },
+  "tts": {
+    "parallel_workers": 6,
+    "sample_rate": 22050
+  },
+  "checkpoint": {
+    "enabled": true
+  }
+}
